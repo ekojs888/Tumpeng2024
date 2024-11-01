@@ -1,106 +1,123 @@
 #include <Arduino.h>
 
-// Definisikan pin untuk setiap driver stepper (sesuaikan dengan pin pada rangkaian)
+// Definisikan pin untuk driver stepper pada ESP32 atau Arduino Uno
 #define NAIK true
 #define TURUN false
 
 #if defined(ESP32)
-#define STEPPER_EN 26
-#define STEPPER1_STEP_PIN 25
-#define STEPPER1_DIR_PIN 17
-#elif defined(ARDUINO_ARCH_AVR)
-#define STEPPER_EN 2
-#define STEPPER1_STEP_PIN 3
-#define STEPPER1_DIR_PIN 4
-#else
-    #error "Platform tidak didukung. Harap gunakan ESP32 atau Arduino Uno."
-#endif
-// Jumlah langkah per putaran penuh untuk stepper (misalnya 200 untuk stepper 1,8° per langkah)
-#define STEPS_PER_REVOLUTION 3200L
+#define STEPPER_EN_PIN 23
+#define STEPPER_DIR_PIN 5  // Pin arah yang digunakan bersama
 
-// Kelas untuk kontrol motor stepper dengan pengaturan kecepatan RPM
-class StepperController
-{
+#define STEPPER1_STEP_PIN 26
+#define STEPPER2_STEP_PIN 25
+#define STEPPER3_STEP_PIN 17
+#define STEPPER4_STEP_PIN 16
+#define STEPPER5_STEP_PIN 27
+#define STEPPER6_STEP_PIN 14
+
+#elif defined(ARDUINO_ARCH_AVR)
+#define STEPPER_EN_PIN 2
+#define STEPPER_DIR_PIN 3  // Pin arah yang digunakan bersama
+
+#define STEPPER1_STEP_PIN 4
+#define STEPPER2_STEP_PIN 5
+#define STEPPER3_STEP_PIN 6
+#define STEPPER4_STEP_PIN 7
+#define STEPPER5_STEP_PIN 8
+#define STEPPER6_STEP_PIN 9
+#else
+#error "Platform tidak didukung. Harap gunakan ESP32 atau Arduino Uno."
+#endif
+
+#define STEPS_PER_REVOLUTION 3200L // Langkah per putaran penuh
+
+class StepperController {
 private:
-  int stepPin, dirPin;
+  int stepPin;
   long stepsRemaining;
   unsigned long lastStepTime;
-  unsigned long stepInterval; // Interval waktu antar langkah dalam mikrodetik
+  unsigned long stepInterval; // Waktu antar langkah dalam mikrodetik
 
 public:
-  // Konstruktor untuk inisialisasi pin stepper dan variabel lainnya
-  StepperController(int stepPin, int dirPin)
-      : stepPin(stepPin), dirPin(dirPin), stepsRemaining(0), lastStepTime(0), stepInterval(1000)
-  {
+  StepperController(int stepPin)
+      : stepPin(stepPin), stepsRemaining(0), lastStepTime(0), stepInterval(1000) {
     pinMode(stepPin, OUTPUT);
-    pinMode(dirPin, OUTPUT);
-    pinMode(STEPPER_EN, OUTPUT);
-    digitalWrite(STEPPER_EN, LOW);
   }
 
-  // Mengatur kecepatan dalam RPM
-  void setRPM(float rpm)
-  {
-    // Menghitung waktu antar langkah berdasarkan RPM
+  void setRPM(float rpm) {
     stepInterval = 60000000L / (STEPS_PER_REVOLUTION * rpm);
   }
 
-  // Memulai pergerakan motor untuk sejumlah langkah tertentu dan arah
-  void move(long steps, bool clockwise)
-  {
-    digitalWrite(dirPin, clockwise ? HIGH : LOW);
+  void move(long steps) {
     stepsRemaining = steps;
   }
 
-  // Panggil fungsi ini dalam loop untuk memperbarui posisi stepper secara non-blocking
-  void update()
-  {
-    if (stepsRemaining > 0)
-    {
+  void update() {
+    if (stepsRemaining > 0) {
       unsigned long currentTime = micros();
-      if (currentTime - lastStepTime >= stepInterval)
-      {
+      if (currentTime - lastStepTime >= stepInterval) {
         lastStepTime = currentTime;
         digitalWrite(stepPin, HIGH);
-        delayMicroseconds(1); // Pulsa pendek untuk setiap langkah
+        delayMicroseconds(1);
         digitalWrite(stepPin, LOW);
         stepsRemaining--;
       }
     }
   }
 
-  // Mengecek apakah motor masih bergerak
-  bool isMoving()
-  {
+  bool isMoving() {
     return stepsRemaining > 0;
   }
 };
 
-// Membuat objek untuk masing-masing stepper (6 stepper)
-StepperController stepper1(STEPPER1_STEP_PIN, STEPPER1_DIR_PIN);
+// Buat objek untuk setiap stepper
+StepperController stepper1(STEPPER1_STEP_PIN);
+StepperController stepper2(STEPPER2_STEP_PIN);
+StepperController stepper3(STEPPER3_STEP_PIN);
+StepperController stepper4(STEPPER4_STEP_PIN);
 
-// Variabel untuk status pergerakan
-bool isOpening = true; // Status untuk membuka kelopak
+bool isOpening = true;
 
-void setup()
-{
-  // Inisialisasi kecepatan dalam RPM untuk setiap stepper
-  stepper1.setRPM(350); // Sesuaikan RPM untuk kecepatan yang diinginkan
+void setup() {
+  pinMode(STEPPER_EN_PIN, OUTPUT);
+  pinMode(STEPPER_DIR_PIN, OUTPUT);
+  
+  digitalWrite(STEPPER_EN_PIN, LOW); // Aktifkan driver motor
+  digitalWrite(STEPPER_DIR_PIN, NAIK); // Set arah untuk semua motor
 
-  // Mulai gerakan membuka untuk setiap kelopak
-  long stepsToOpen = STEPS_PER_REVOLUTION *1; // Jumlah langkah untuk membuka kelopak
-  stepper1.move(stepsToOpen, NAIK);
+  // Set RPM untuk setiap motor
+  stepper1.setRPM(350);
+  stepper2.setRPM(350);
+  stepper3.setRPM(350);
+  stepper4.setRPM(350);
+
+  // Set langkah untuk membuka kelopak
+  long stepsToOpen[4] = {
+    STEPS_PER_REVOLUTION * 140,
+    STEPS_PER_REVOLUTION * 150,
+    STEPS_PER_REVOLUTION * 150,
+    STEPS_PER_REVOLUTION * 150,
+  };
+
+  // Mulai gerakan membuka
+  stepper1.move(stepsToOpen[0]);
+  stepper2.move(stepsToOpen[1]);
+  stepper3.move(stepsToOpen[2]);
+  stepper4.move(stepsToOpen[3]);
 }
 
-void loop()
-{
-  // Memperbarui posisi setiap motor stepper dalam setiap iterasi loop
+void loop() {
   stepper1.update();
+  stepper2.update();
+  stepper3.update();
+  stepper4.update();
 
-  // Cek apakah semua motor selesai membuka kelopak
-  if (isOpening && !stepper1.isMoving())
-  {
-    // Set status menjadi false untuk menandakan bahwa semua kelopak telah terbuka
+  if (isOpening &&
+      !stepper1.isMoving() &&
+      !stepper2.isMoving() &&
+      !stepper3.isMoving() &&
+      !stepper4.isMoving()) {
     isOpening = false;
+    digitalWrite(STEPPER_EN_PIN, HIGH); // Nonaktifkan motor setelah selesai
   }
 }
