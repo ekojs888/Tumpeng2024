@@ -1,0 +1,70 @@
+#include <WiFi.h>
+
+const char *ssid = "sae";             // Wi-Fi SSID
+const char *password = "77040109";    // Wi-Fi password
+const char *serverIP = "192.168.4.1"; // The IP address of the ESP32 server
+const int serverPort = 80;            // The port of the ESP32 server
+
+WiFiClient client;
+
+// Define the pins for the cables
+const int kabelBukaPin = 18;
+const int kabelTutupPin = 19;
+
+// Variables to track cable status
+bool kabelBukaCut = false;
+bool kabelTutupCut = false;
+
+void setup() {
+  Serial.begin(115200); // Start Serial communication
+  delay(1000);          // Wait for the serial monitor to open
+
+  // Connect to Wi-Fi network
+  WiFi.begin(ssid, password);
+  Serial.println("Connecting to WiFi...");
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("\nConnected to WiFi");
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP()); // Print the IP address of the client (ESP32)
+
+  // Set cable pins as input with pull-up resistors
+  pinMode(kabelBukaPin, INPUT_PULLUP);
+  pinMode(kabelTutupPin, INPUT_PULLUP);
+}
+
+void loop() {
+  // Check cable cut status and send data if cable is cut
+  if (digitalRead(kabelBukaPin) == HIGH && !kabelBukaCut) {
+    sendStatusToServer("KABEL_BUKA_CUT");
+    kabelBukaCut = true; // Flag as cut
+  }
+
+  if (digitalRead(kabelTutupPin) == HIGH && !kabelTutupCut) {
+    sendStatusToServer("KABEL_TUTUP_CUT");
+    kabelTutupCut = true; // Flag as cut
+  }
+
+  // Reset flags when cables are reconnected (pin goes back to LOW)
+  if (digitalRead(kabelBukaPin) == LOW) {
+    kabelBukaCut = false;
+  }
+
+  if (digitalRead(kabelTutupPin) == LOW) {
+    kabelTutupCut = false;
+  }
+}
+
+void sendStatusToServer(const String& status) {
+  if (client.connect(serverIP, serverPort)) {
+    client.println(status); // Send the status to the server
+    Serial.println("Sent status: " + status);
+    client.stop(); // Close the connection
+  } else {
+    Serial.println("Failed to connect to the server.");
+  }
+}
