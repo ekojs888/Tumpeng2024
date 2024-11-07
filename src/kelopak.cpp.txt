@@ -1,0 +1,94 @@
+#include "kelopak.h"
+
+//==================
+kelopak::kelopak(int enPin,int dirPin)
+{
+
+}
+
+void kelopak::begin()
+{
+    klp[0] = stepper(STEPPER1_STEP_PIN);
+    klp[1] = stepper(STEPPER2_STEP_PIN);
+    klp[2] = stepper(STEPPER3_STEP_PIN);
+
+    // Configure pins
+    pinMode(this->pinEn, OUTPUT);
+    pinMode(this->pinDir, OUTPUT);
+
+    enable(true); // Enable motor driver
+}
+
+void kelopak::enable(bool en)
+{
+    if (en)
+    {
+        digitalWrite(STEPPER_EN_PIN, LOW); // Enable motor driver
+    }
+    else
+    {
+        digitalWrite(STEPPER_EN_PIN, HIGH); // disable motor driver
+    }
+}
+
+void kelopak::direction(int ud)
+{
+    digitalWrite(STEPPER_DIR_PIN, ud);
+}
+
+void kelopak::update()
+{
+    if (!isInterrupt)
+    {
+        for (int i = 0; i < STEPPER_NUM_STEP; i++)
+        {
+            klp[i].update();
+        }
+    }
+
+    // Check if movement is complete
+    if (!isComplate &&
+        !isInterrupt &&
+        !klp[0].isMoving() &&
+        !klp[1].isMoving() &&
+        !klp[2].isMoving())
+    {
+        enable(false); // Disable motor after movement
+        Serial.println("Petal movement complete.");
+        isComplate = true;
+    }
+}
+
+void kelopak::openPetals()
+{
+    direction(TURUN);
+    for (int i = 0; i < STEPPER_NUM_STEP; i++)
+    {
+        klp[i].adjustMovement(MAX_STEPS - klp[i].getCurrentPosition());
+    }
+    isOpening = true;
+    isInterrupt = false;
+    isComplate = false;
+    Serial.println("Opening petals...");
+}
+
+void kelopak::closePetals()
+{
+    direction(NAIK);
+    for (int i = 0; i < STEPPER_NUM_STEP; i++)
+    {
+        klp[i].adjustMovement(MAX_STEPS - klp[i].getCurrentPosition());
+    }
+    isOpening = true;
+    isInterrupt = false;
+    isComplate = false;
+    Serial.println("Close petals...");
+}
+
+void kelopak::setRPM(int rpm)
+{
+    for (int i = 0; i < STEPPER_NUM_STEP; i++)
+    {
+        klp[i].setRPM(rpm);
+    }
+}
