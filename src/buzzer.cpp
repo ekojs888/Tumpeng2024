@@ -5,14 +5,16 @@ buzzer::buzzer(int pin, int dly)
     pinBuzzer = pin;
     delayBuzzer = dly;
     pinMode(pinBuzzer, OUTPUT);
+    digitalWrite(pinBuzzer, HIGH); // Matikan buzzer
     buzEn = false; // Inisialisasi status awal buzzer
 }
 
 void buzzer::setBuzzer()
 {
-    digitalWrite(pinBuzzer, HIGH); // Nyalakan buzzer
+    digitalWrite(pinBuzzer, LOW); // Nyalakan buzzer
     buzEn = true;                  // Set status buzzer aktif
     lastStepTime = millis();       // Simpan waktu awal saat buzzer diaktifkan
+    Serial.printf("buser aktif %ld \r\n",lastStepTime);
 }
 
 void buzzer::run()
@@ -22,7 +24,8 @@ void buzzer::run()
         unsigned long currentTime = millis();
         if (currentTime - lastStepTime >= delayBuzzer) // Jika waktu aktif sudah tercapai
         {
-            digitalWrite(pinBuzzer, LOW); // Matikan buzzer
+            Serial.printf("buser nonaktif %ld \r\n",lastStepTime);
+            digitalWrite(pinBuzzer, HIGH); // Matikan buzzer
             buzEn = false;               // Reset status untuk menghindari pengulangan
         }
     }
