@@ -1,12 +1,15 @@
 #include <Arduino.h>
-// #include <WiFi.h>
+#include <WiFi.h>
 #include "stepper.h"
+#include "buzzer.h"
 
 #define NAIK LOW
 #define TURUN HIGH
 
 #define BUTTON_UP 27
 #define BUTTON_DOWN 14
+
+#define PIN_BUZZER 16
 
 #define STEPPER_EN_PIN 18
 #define STEPPER_DIR_PIN 19
@@ -20,6 +23,9 @@
 
 bool buttonDownPushd, buttonUpPushd;
 bool sedangTurun, sedangNaik;
+
+//buzzer
+buzzer serine(PIN_BUZZER,5000);
 
 stepper stepper1(STEPPER1_STEP_PIN);
 stepper stepper2(STEPPER2_STEP_PIN);
@@ -55,6 +61,10 @@ void kelopakBUKA()
   if (!sedangTurun)
   {
     Serial.println("kelopak membuka.....");
+
+    //aktifkan buzzer
+    serine.setBuzzer();
+
     kelopakENABLE(true);
     kelopaDIR(TURUN);
 
@@ -105,9 +115,12 @@ void kelopakBegin()
 }
 
 // Wi-Fi configuration
-const char *ssid = "sae";
+const char *ssid = "dansat";
 const char *password = "77040109";
-// WiFiServer server(80);
+WiFiServer server(80);
+
+
+
 
 void setup()
 {
@@ -122,19 +135,21 @@ void setup()
   kelopakBegin();
 
   // // Start Wi-Fi as Access Point
-  // WiFi.softAP(ssid, password);
-  // server.begin();
-  // Serial.println("WiFi started. Waiting for clients...");
+  WiFi.softAP(ssid, password);
+  server.begin();
+  Serial.println("WiFi started. Waiting for clients...");
 
   delay(3000);
   Serial.println("kelopak bunga v.1");
 
   sedangNaik = false;
   sedangTurun = false;
+
 }
 
 void loop()
 {
+  serine.run();
 
   stepper1.update();
   stepper2.update();
@@ -159,34 +174,34 @@ void loop()
   }
 
   // Check for client connections
-  // WiFiClient client = server.available();
-  // if (client)
-  // {
-  //   Serial.println("Client connected.");
-  //   String request = client.readStringUntil('\r');
-  //   Serial.println("Request: " + request);
+  WiFiClient client = server.available();
+  if (client)
+  {
+    Serial.println("Client connected.");
+    String request = client.readStringUntil('\r');
+    Serial.println("Request: " + request);
 
-  //   client.println(request);
+    client.println(request);
 
-  //   Serial.println(request.indexOf("BUKA"));
-  //   // Command handling
-  //   if (request.indexOf("BUKA") != -1)
-  //   {
+    Serial.println(request.indexOf("BUKA"));
+    // Command handling
+    if (request.indexOf("BUKA") != -1 && !stepper1.isMoving()&& !stepper2.isMoving()&& !stepper3.isMoving())
+    {
+      kelopakBUKA();
+      client.println("Petals are opening...");
+    }
+    // else if (request.indexOf("TUTUP") != -1)
+    // {
 
-  //     client.println("Petals are opening...");
-  //   }
-  //   else if (request.indexOf("TUTUP") != -1)
-  //   {
-
-  //     client.println("Petals are closing...");
-  //   }
-  //   else
-  //   {
-  //     client.println("Invalid command. Use 'BUKA' to open or 'TUTUP' to close.");
-  //   }
-  //   client.stop();
-  //   Serial.println("Client disconnected.");
-  // }
+    //   client.println("Petals are closing...");
+    // }
+    else
+    {
+      client.println("Invalid command. Use 'BUKA' to open or 'TUTUP' to close.");
+    }
+    client.stop();
+    Serial.println("Client disconnected.");
+  }
 
   
 }
