@@ -3,33 +3,32 @@
 
 #include <Arduino.h>
 
-
-
-
-
-// Steps per full revolution
-#define STEPS_PER_REVOLUTION 200L
-// Maximum steps for full open/close (can be adjusted as needed)
-#define MAX_STEPS (STEPS_PER_REVOLUTION * 1)
-
 class stepper
 {
 private:
     int stepPin;
-    long stepsRemaining=0;
-    long currentPosition =0; // Track the current position (in steps)
+    long stepsRemaining = 0;
+    long totalSteps;
+    long currentPosition = 0; // Track the current position (in steps)
     unsigned long lastStepTime;
     unsigned long stepInterval;
+    unsigned long baseInterval;
+    unsigned long rampSteps = 15;
+
+    int stepPerRev = 200;
+    
 
 public:
+    stepper();
     stepper(int stepPin);
+    void setRampStep(long rs);
     void setRPM(float rpm);
     long getCurrentPosition();
     void update();
     bool isMoving();
     void adjustMovement(int steps);
+    void setStepPerRev(int steps);
 };
-
 
 // class kelopak
 // {
@@ -52,6 +51,5 @@ public:
 //     void setRPM(int rpm);
 //     void update();
 // };
-
 
 #endif
